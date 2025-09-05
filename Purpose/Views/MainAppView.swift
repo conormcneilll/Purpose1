@@ -6,7 +6,7 @@ struct MainAppView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
             
-            // Home Feed Tab
+           
             HomeFeedView()
                 .tabItem {
                     Image(systemName: "house.fill")
@@ -14,7 +14,7 @@ struct MainAppView: View {
                 }
                 .tag(0)
             
-            // Camera / Post Content Tab
+          
             CameraView()
                 .tabItem {
                     Image(systemName: "camera.fill")
@@ -22,7 +22,7 @@ struct MainAppView: View {
                 }
                 .tag(1)
             
-            // Profile / Settings Tab
+        
             ProfileView()
                 .tabItem {
                     Image(systemName: "person.fill")

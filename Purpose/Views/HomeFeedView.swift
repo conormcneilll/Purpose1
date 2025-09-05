@@ -1,10 +1,3 @@
-//
-//  HomeFeedView.swift
-//  Purpose
-//
-//  Created by Conor McNeill on 05/09/2025.
-//
-
 import SwiftUI
 import AVKit
 
@@ -32,28 +25,43 @@ struct HomeFeedView: View {
                 
                 if !searchResults.isEmpty {
                     List(searchResults) { user in
-                        HStack {
-                            AsyncImage(url: URL(string: user.profile_image_url ?? "")) { img in
-                                img.resizable()
-                                    .scaledToFill()
-                                    .frame(width: 40, height: 40)
-                                    .clipShape(Circle())
-                            } placeholder: {
-                                Image(systemName: "person.crop.circle.fill")
-                                    .resizable()
-                                    .frame(width: 40, height: 40)
-                                    .foregroundColor(.gray)
+                        
+                        NavigationLink(destination: UserProfileView(profileUserId: user.id)) {
+                            HStack {
+                                AsyncImage(url: URL(string: user.profile_image_url ?? "")) { img in
+                                    img.resizable()
+                                        .scaledToFill()
+                                        .frame(width: 40, height: 40)
+                                        .clipShape(Circle())
+                                } placeholder: {
+                                    Image(systemName: "person.crop.circle.fill")
+                                        .resizable()
+                                        .frame(width: 40, height: 40)
+                                        .foregroundColor(.gray)
+                                }
+                                
+                                Text(user.username)
+                                    .font(.headline)
+                                
+                                Spacer()
+                                
+                                
+                                if user.isFollowingBool { // Change from user.is_following == true to user.isFollowingBool
+                                    Text("Following")
+                                        .font(.subheadline)
+                                        .bold()
+                                        .foregroundColor(.green)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(Color.green.opacity(0.2))
+                                        .cornerRadius(8)
+                                } else {
+                                    Button("Follow") {
+                                        addFriend(friendId: user.id)
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                }
                             }
-                            
-                            Text(user.username)
-                                .font(.headline)
-                            
-                            Spacer()
-                            
-                            Button(addedFriends.contains(user.id) ? "Added" : "Add") {
-                                addFriend(friendId: user.id)
-                            }
-                            .disabled(addedFriends.contains(user.id))
                         }
                     }
                     .listStyle(.plain)
@@ -63,7 +71,10 @@ struct HomeFeedView: View {
                 ScrollView {
                     LazyVStack(spacing: 16) {
                         ForEach(posts) { post in
-                            PostView(post: post)
+                            PostView(post: post, onDelete: { deletedPostId in
+                                // Remove the deleted post from the array
+                                posts.removeAll { $0.id == deletedPostId }
+                            })
                         }
                     }
                     .padding(.bottom)
@@ -71,9 +82,39 @@ struct HomeFeedView: View {
                         fetchFeed()
                     }
                 }
+                .overlay(
+                    
+                    Group {
+                        if posts.isEmpty && searchResults.isEmpty {
+                            VStack(spacing: 20) {
+                                Image("PurposeLogo")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 200)
+                                    .opacity(0.1) // Make the logo semi-transparent
+                                Text("No posts? Try your first prompt or follow some friends using the searchbar above!")
+                                    .font(.headline)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                        }
+                    }
+                )
             }
-            .navigationTitle("Purpose")
-            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "location.fill")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 20, height: 20)
+                            .foregroundColor(.blue)
+                        Text("Purpose")
+                            .font(.headline)
+                            .fontWeight(.bold)
+                    }
+                }
+            }
             .onAppear {
                 fetchFeed()
             }
@@ -84,6 +125,7 @@ struct HomeFeedView: View {
     func fetchFeed() {
         guard userId > 0,
               let url = URL(string: "http://127.0.0.1:3000/feed/home/\(userId)") else { return }
+        
         URLSession.shared.dataTask(with: url) { data, _, _ in
             if let data = data,
                let response = try? JSONDecoder().decode(FeedResponse.self, from: data),
@@ -94,11 +136,23 @@ struct HomeFeedView: View {
     }
     
     func searchUsers(query: String) {
-        guard !query.isEmpty,
-              let url = URL(string: "http://127.0.0.1:3000/users/search?query=\(query)") else {
+        guard !query.isEmpty, userId > 0 else {
             searchResults = []
             return
         }
+
+        var components = URLComponents(string: "http://127.0.0.1:3000/users/search")!
+        components.queryItems = [
+            URLQueryItem(name: "query", value: query),
+            URLQueryItem(name: "current_user_id", value: String(userId))
+        ]
+
+        guard let url = components.url else {
+            print("Invalid URL")
+            searchResults = []
+            return
+        }
+        
         URLSession.shared.dataTask(with: url) { data, _, _ in
             if let data = data,
                let response = try? JSONDecoder().decode(SearchResponse.self, from: data),

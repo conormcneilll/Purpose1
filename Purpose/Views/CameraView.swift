@@ -2,7 +2,6 @@ import SwiftUI
 import PhotosUI
 import AVFoundation
 
-// MARK: - Media Picker
 struct MediaPicker: UIViewControllerRepresentable {
     @Environment(\.presentationMode) var presentationMode
     var sourceType: UIImagePickerController.SourceType
@@ -45,7 +44,6 @@ struct MediaPicker: UIViewControllerRepresentable {
     }
 }
 
-// MARK: - CameraView
 struct CameraView: View {
     @AppStorage("user_id") private var userId: Int = 0
     @State private var dailyPrompt: Prompt? = nil
@@ -103,7 +101,7 @@ struct CameraView: View {
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .padding(.horizontal)
 
-            // MARK: - Buttons
+
             HStack(spacing: 16) {
                 // Upload / Capture Button
                 Button(action: { showActionSheet = true }) {
@@ -129,7 +127,6 @@ struct CameraView: View {
                     ])
                 }
 
-                // Post Button (enabled only if media selected)
                 Button(action: uploadPost) {
                     if isUploading { ProgressView() }
                     Text("Post").bold()
@@ -173,9 +170,9 @@ struct CameraView: View {
         }
     }
 
-    // MARK: - Networking
     func fetchDailyPrompt() {
-        guard let url = URL(string: "http://127.0.0.1:3000/prompt/daily") else { return }
+    
+        guard let url = URL(string: "http://127.0.0.1:3000/prompts/random") else { return }
         URLSession.shared.dataTask(with: url) { data, _, _ in
             guard let data = data else { return }
             if let result = try? JSONDecoder().decode(PromptResponse.self, from: data) {
@@ -210,12 +207,19 @@ struct CameraView: View {
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
-        URLSession.shared.dataTask(with: request) { data, _, error in
+        URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async { self.isUploading = false }
 
             if let error = error {
                 DispatchQueue.main.async { self.uploadMessage = "Error: \(error.localizedDescription)" }
                 return
+            }
+
+            if let httpResponse = response as? HTTPURLResponse {
+                if httpResponse.statusCode == 409 {
+                    DispatchQueue.main.async { self.uploadMessage = "Oops! You've already shared for today's prompt. ✨ Check back tomorrow!" }
+                    return
+                }
             }
 
             if let data = data,

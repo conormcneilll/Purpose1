@@ -3,14 +3,16 @@ import UIKit
 
 struct SettingsView: View {
     @StateObject private var viewModel = SettingsViewModel()
-
+    
     @AppStorage("isLoggedIn") private var isLoggedIn = true
     @AppStorage("user_id") private var userId: Int = 0
-
+    
     @State private var message = ""
+    @State private var messageIsSuccess: Bool = false
     @State private var showPicker = false
     @State private var pickerSource: UIImagePickerController.SourceType = .photoLibrary
-
+    @State private var showingUpdateAlert = false
+    
     var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
@@ -18,7 +20,7 @@ struct SettingsView: View {
                     .font(.largeTitle)
                     .bold()
                     .padding(.top)
-
+                
                 ZStack {
                     if let data = viewModel.profileImageData, let uiImage = UIImage(data: data) {
                         Image(uiImage: uiImage)
@@ -54,7 +56,7 @@ struct SettingsView: View {
                                     .foregroundColor(.white)
                             )
                     }
-
+                    
                     Button(action: { showPicker = true }) {
                         Image(systemName: "plus.circle.fill")
                             .resizable()
@@ -70,17 +72,17 @@ struct SettingsView: View {
                         viewModel.profileImageData = data
                     }
                 }
-
+                
                 TextField("Username", text: $viewModel.username)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .autocapitalization(.none)
                     .padding(.horizontal)
-
+                
                 TextField("Email", text: $viewModel.email)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .autocapitalization(.none)
                     .padding(.horizontal)
-
+                
                 ZStack(alignment: .topLeading) {
                     if viewModel.bio.isEmpty {
                         Text("Bio")
@@ -94,13 +96,13 @@ struct SettingsView: View {
                         .cornerRadius(5)
                 }
                 .padding(.horizontal)
-
+                
                 Text(message)
-                    .foregroundColor(.red)
+                    .foregroundColor(messageIsSuccess ? .green : .red)
                     .padding(.top)
-
+                
                 Button("Update Profile") {
-                    updateUser()
+                    showingUpdateAlert = true
                 }
                 .padding()
                 .frame(maxWidth: .infinity)
@@ -108,14 +110,25 @@ struct SettingsView: View {
                 .foregroundColor(.white)
                 .cornerRadius(10)
                 .padding(.horizontal)
+                .alert("Are you sure you want to update your profile?", isPresented: $showingUpdateAlert) {
+                    Button("Update", role: .destructive) {
+                        updateUser()
+                    }
+                    Button("Cancel", role: .cancel) { }
+                }
                 
-                Spacer()
-
                 Button("Log Out") {
                     isLoggedIn = false
                 }
-                .foregroundColor(.red)
                 .padding()
+                .frame(maxWidth: .infinity)
+                .background(Color.red)
+                .foregroundColor(.white)
+                .cornerRadius(10)
+                .padding(.horizontal)
+                
+                Spacer()
+                
             }
             .navigationTitle("Settings")
             .navigationBarHidden(true)
@@ -124,33 +137,33 @@ struct SettingsView: View {
             }
         }
     }
-
+    
     // MARK: - Networking
     func fetchProfile() {
         guard userId > 0,
               let url = URL(string: "http://127.0.0.1:3000/user/\(userId)/profile") else { return }
-
+        
         URLSession.shared.dataTask(with: url) { data, _, _ in
             if let data = data,
                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let success = json["success"] as? Bool, success,
                let profile = json["profile"] as? [String: Any] {
-
+                
                 DispatchQueue.main.async {
-                    // Update ViewModel properties directly
+                    
                     viewModel.username = profile["username"] as? String ?? ""
                     viewModel.email = profile["email"] as? String ?? ""
                     viewModel.bio = profile["bio"] as? String ?? ""
-
-                    // Update AppStorage through the ViewModel
+                    
+                    
                     viewModel.storedUsername = viewModel.username
                     viewModel.storedEmail = viewModel.email
                     viewModel.storedBio = viewModel.bio
-
+                    
                     if let imageUrlString = profile["profile_image_url"] as? String {
-                       // ⚠️ Corrected: Use the URL as is from the server
-                       viewModel.storedProfileImageUrl = imageUrlString
-                       viewModel.profileImageURL = URL(string: viewModel.storedProfileImageUrl)
+                        
+                        viewModel.storedProfileImageUrl = imageUrlString
+                        viewModel.profileImageURL = URL(string: viewModel.storedProfileImageUrl)
                     } else {
                         viewModel.storedProfileImageUrl = ""
                         viewModel.profileImageURL = nil
@@ -159,41 +172,44 @@ struct SettingsView: View {
             }
         }.resume()
     }
-
+    
     func updateUser() {
         guard userId > 0,
-              let url = URL(string: "http://127.0.0.1:3000/updateUser") else { return }
-
+              
+              let url = URL(string: "http://127.0.0.1:3000/user/\(userId)/profile") else { return }
+        
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-
+        
         var body: [String: Any] = [
-            "user_id": userId,
             "username": viewModel.username,
             "email": viewModel.email,
             "bio": viewModel.bio
         ]
-
+        
         if let data = viewModel.profileImageData {
             body["profile_image_base64"] = data.base64EncodedString()
         }
-
+        
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
-
+        
         URLSession.shared.dataTask(with: request) { data, _, error in
             if let error = error {
-                DispatchQueue.main.async { message = "Error: \(error.localizedDescription)" }
+                DispatchQueue.main.async {
+                    self.message = "Error: \(error.localizedDescription)"
+                    self.messageIsSuccess = false
+                }
                 return
             }
-
+            
             if let data = data,
                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let success = json["success"] as? Bool, success {
                 DispatchQueue.main.async {
-                    message = json["message"] as? String ?? "Updated successfully!"
+                    self.message = json["message"] as? String ?? "Updated successfully!"
+                    self.messageIsSuccess = true
                     if let profileUrl = json["profile_image_url"] as? String {
-                        // ⚠️ Corrected: Use the URL as is from the server
                         viewModel.storedProfileImageUrl = profileUrl
                         viewModel.profileImageURL = URL(string: viewModel.storedProfileImageUrl)
                         viewModel.profileImageData = nil
@@ -201,6 +217,11 @@ struct SettingsView: View {
                     viewModel.storedUsername = viewModel.username
                     viewModel.storedEmail = viewModel.email
                     viewModel.storedBio = viewModel.bio
+                }
+            } else {
+                DispatchQueue.main.async {
+                    self.message = "Update failed."
+                    self.messageIsSuccess = false
                 }
             }
         }.resume()

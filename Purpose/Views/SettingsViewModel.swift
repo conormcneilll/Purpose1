@@ -7,16 +7,15 @@ class SettingsViewModel: ObservableObject {
     @AppStorage("bio") var storedBio: String = ""
     @AppStorage("profile_image_url") var storedProfileImageUrl: String = ""
 
-    @Published var username: String = "" // Give it a default value
-    @Published var email: String = "" // Give it a default value
-    @Published var bio: String = "" // Give it a default value
+    @Published var username: String = ""
+    @Published var email: String = ""
+    @Published var bio: String = ""
     
     @Published var profileImageData: Data? = nil
     @Published var profileImageURL: URL? = nil
 
     init() {
-        // Now that the @Published properties have a default value, we can safely
-        // access 'self' and its other properties like storedUsername.
+        
         self.username = storedUsername
         self.email = storedEmail
         self.bio = storedBio

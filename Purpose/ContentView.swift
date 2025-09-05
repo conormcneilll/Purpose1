@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    // Track login status across app launches
+    
     @AppStorage("isLoggedIn") private var isLoggedIn = false
     @AppStorage("username") private var storedUsername = ""
     @AppStorage("email") private var storedEmail = ""
@@ -9,22 +9,24 @@ struct ContentView: View {
     
     @State private var email = ""
     @State private var password = ""
-    @State private var username = "" // Only for signup
+    @State private var username = "" 
     @State private var isLogin = true
     @State private var message = ""
     
     var body: some View {
-        // Show main app if logged in, otherwise login/signup
+    
         if isLoggedIn {
             MainAppView()
         } else {
             NavigationStack {
                 VStack(spacing: 20) {
-                    Text(isLogin ? "Login" : "Sign Up")
-                        .font(.largeTitle)
-                        .bold()
+                    Image("PurposeLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 200)
+                        .padding(.bottom, 20)
                     
-                    // Show username only during signup
+                    
                     if !isLogin {
                         TextField("Username", text: $username)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -107,9 +109,9 @@ struct ContentView: View {
                     DispatchQueue.main.async {
                         self.message = responseJSON["message"] as? String ?? "Unknown response"
                         
-                        // Redirect to MainAppView if login/signup is successful
+                       
                         if responseJSON["success"] as? Bool == true {
-                            // Save user info
+                            
                             if let username = responseJSON["username"] as? String {
                                 self.storedUsername = username
                             }

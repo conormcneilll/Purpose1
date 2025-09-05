@@ -8,10 +8,10 @@ struct CommentsView: View {
     @State private var newCommentText: String = ""
     @State private var isLoading = false
     @State private var message: String = ""
-    
+
     var body: some View {
         VStack {
-            // Display existing comments
+            
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 10) {
                     ForEach(comments) { comment in
@@ -24,7 +24,7 @@ struct CommentsView: View {
                 fetchComments()
             }
             
-            // Text field and button to add new comment
+            
             HStack {
                 TextField("Add a comment...", text: $newCommentText)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -50,17 +50,18 @@ struct CommentsView: View {
         }
     }
     
-    // MARK: - Networking
     
     func fetchComments() {
         guard let url = URL(string: "http://127.0.0.1:3000/posts/\(postId)") else { return }
         
         isLoading = true
+        let decoder = JSONDecoder()
+        
         URLSession.shared.dataTask(with: url) { data, _, error in
             DispatchQueue.main.async {
                 self.isLoading = false
                 if let data = data,
-                   let response = try? JSONDecoder().decode(SinglePostResponse.self, from: data),
+                   let response = try? decoder.decode(SinglePostResponse.self, from: data),
                    response.success {
                     self.comments = response.comments
                 } else {
@@ -113,7 +114,6 @@ struct CommentsView: View {
     }
 }
 
-// MARK: - CommentRow
 struct CommentRow: View {
     let comment: Comment
     
@@ -124,6 +124,9 @@ struct CommentRow: View {
             + Text(" \(comment.comment_text)")
                 .font(.subheadline)
                 .foregroundColor(.primary)
+            Text(comment.created_at.formattedDate)
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
     }
 }

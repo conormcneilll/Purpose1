@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-// MARK: - Profile Image Picker
+
 struct ProfileImagePicker: UIViewControllerRepresentable {
     @Environment(\.presentationMode) var presentationMode
     var sourceType: UIImagePickerController.SourceType
