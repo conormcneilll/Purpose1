@@ -1,11 +1,3 @@
-//
-//  MainAppView 2.swift
-//  Purpose
-//
-//  Created by Conor McNeill on 02/09/2025.
-//
-
-
 import SwiftUI
 
 struct MainAppView: View {

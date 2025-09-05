@@ -2,7 +2,7 @@ import SwiftUI
 import AVKit
 
 struct FeedPostView: View {
-    let post: FeedPost
+    let post: Post
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -21,7 +21,7 @@ struct FeedPostView: View {
                 }
                 
                 NavigationLink(destination: UserProfileView(userId: post.user_id, username: post.username)) {
-                    Text(post.username).bold()
+                    Text(post.username ?? "Unknown").bold()
                 }
             }
             
